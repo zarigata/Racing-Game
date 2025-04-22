@@ -47,6 +47,7 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/RenderPass.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/ShaderPass.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.41/Tone.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"></script>
   <script>
     const menu = document.getElementById('menu');
     const options = [...document.querySelectorAll('#menu-options li')];
@@ -137,6 +138,8 @@
 
     // GAME & THREE.JS SETUP
     let scene, camera, renderer, vehicle, keys = {}, trackCurve;
+    let physicsWorld, chassisBody, vehiclePhysics;
+
     function initGame() {
       const canvas = document.getElementById('gameCanvas');
       scene = new THREE.Scene();
@@ -150,8 +153,58 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       camera.position.set(0, 5, 10);
       window.addEventListener('resize', onWindowResize);
+      setupPhysics();
       setupScene();
       animate();
+    }
+    function setupPhysics() {
+      physicsWorld = new CANNON.World();
+      physicsWorld.gravity.set(0, -9.82, 0);
+      physicsWorld.broadphase = new CANNON.NaiveBroadphase();
+      physicsWorld.solver.iterations = 10;
+      // Ground plane
+      const groundBody = new CANNON.Body({ mass: 0 });
+      groundBody.addShape(new CANNON.Plane());
+      groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0);
+      physicsWorld.addBody(groundBody);
+      // Chassis
+      chassisBody = new CANNON.Body({ mass: 150 });
+      chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(0.5, 0.25, 1)));
+      chassisBody.position.set(0, 1, 0);
+      // Raycast vehicle
+      vehiclePhysics = new CANNON.RaycastVehicle({
+        chassisBody: chassisBody,
+        indexRightAxis: 0,
+        indexUpAxis: 1,
+        indexForwardAxis: 2
+      });
+      const wheelOptions = {
+        radius: 0.4,
+        directionLocal: new CANNON.Vec3(0, -1, 0),
+        axleLocal: new CANNON.Vec3(-1, 0, 0),
+        suspensionStiffness: 30,
+        suspensionRestLength: 0.3,
+        frictionSlip: 5,
+        dampingRelaxation: 2.3,
+        dampingCompression: 4.4,
+        maxSuspensionForce: 100000,
+        rollInfluence: 0.01,
+        maxSuspensionTravel: 0.3,
+        customSlidingRotationalSpeed: -30,
+        useCustomSlidingRotationalSpeed: true
+      };
+      const wheelPositions = [
+        new CANNON.Vec3(-0.7, 0, 1.2),
+        new CANNON.Vec3(0.7, 0, 1.2),
+        new CANNON.Vec3(-0.7, 0, -1.2),
+        new CANNON.Vec3(0.7, 0, -1.2)
+      ];
+      wheelPositions.forEach(pos => {
+        const opt = { ...wheelOptions, chassisConnectionPointLocal: pos };
+        vehiclePhysics.addWheel(opt);
+      });
+      vehiclePhysics.addToWorld(physicsWorld);
+      physicsWorld.addBody(chassisBody);
     }
     function setupScene() {
       // Ground
@@ -226,22 +279,53 @@
         bump.position.set(pos.x, 0.05, pos.z);
         bump.rotation.y = angle;
         scene.add(bump);
+        // Physics body for bump
+        if (physicsWorld) {
+          const halfExt = new CANNON.Vec3(width*1.2/2, 0.1/2, 0.2/2);
+          const bumpBody = new CANNON.Body({ mass: 0 });
+          bumpBody.addShape(new CANNON.Box(halfExt));
+          bumpBody.position.set(pos.x, 0.05, pos.z);
+          bumpBody.quaternion.setFromEuler(0, angle, 0);
+          physicsWorld.addBody(bumpBody);
+        }
       }
     }
 
     // ANIMATION LOOP
     function animate() {
       requestAnimationFrame(animate);
-      const moveSpeed = 0.1, rotSpeed = 0.03;
-      if (keys.ArrowLeft) vehicle.rotation.y += rotSpeed;
-      if (keys.ArrowRight) vehicle.rotation.y -= rotSpeed;
-      if (keys.ArrowUp) {
-        vehicle.position.x += Math.sin(vehicle.rotation.y) * moveSpeed;
-        vehicle.position.z += Math.cos(vehicle.rotation.y) * moveSpeed;
-      }
-      if (keys.ArrowDown) {
-        vehicle.position.x -= Math.sin(vehicle.rotation.y) * moveSpeed;
-        vehicle.position.z -= Math.cos(vehicle.rotation.y) * moveSpeed;
+      // Physics step
+      if (physicsWorld) {
+        // Control input
+        const maxForce = 1500;
+        const maxSteer = 0.5;
+        // Engine force
+        if (keys.ArrowUp) {
+          vehiclePhysics.applyEngineForce(-maxForce, 2);
+          vehiclePhysics.applyEngineForce(-maxForce, 3);
+        } else if (keys.ArrowDown) {
+          vehiclePhysics.applyEngineForce(maxForce, 2);
+          vehiclePhysics.applyEngineForce(maxForce, 3);
+        } else {
+          vehiclePhysics.applyEngineForce(0, 2);
+          vehiclePhysics.applyEngineForce(0, 3);
+        }
+        // Steering
+        if (keys.ArrowLeft) {
+          vehiclePhysics.setSteeringValue(maxSteer, 0);
+          vehiclePhysics.setSteeringValue(maxSteer, 1);
+        } else if (keys.ArrowRight) {
+          vehiclePhysics.setSteeringValue(-maxSteer, 0);
+          vehiclePhysics.setSteeringValue(-maxSteer, 1);
+        } else {
+          vehiclePhysics.setSteeringValue(0, 0);
+          vehiclePhysics.setSteeringValue(0, 1);
+        }
+        // Step world
+        physicsWorld.step(1/60);
+        // Sync mesh with physics
+        vehicle.position.copy(chassisBody.position);
+        vehicle.quaternion.copy(chassisBody.quaternion);
       }
       camera.position.set(vehicle.position.x, vehicle.position.y + 5, vehicle.position.z + 10);
       camera.lookAt(vehicle.position);
