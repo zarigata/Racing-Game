@@ -7,17 +7,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; font-family: 'Press Start 2P', monospace; color: #fff; overflow: hidden; }
-    #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 2; background: rgba(20,20,60,0.8); padding: 20px; border: 2px solid #08f; border-radius: 8px; }
     #menu h1 { margin-bottom: 20px; font-size: 24px; }
     #menu ul { list-style: none; padding: 0; }
     #menu li { margin: 10px 0; font-size: 18px; opacity: 0.5; transition: opacity 0.2s; }
     #menu li.selected { opacity: 1; }
-    #vehicle-menu { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    #vehicle-menu { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 2; background: rgba(20,20,60,0.8); padding: 20px; border: 2px solid #08f; border-radius: 8px; }
     #vehicle-menu h1 { margin-bottom: 20px; font-size: 24px; }
     #vehicle-menu ul { list-style: none; padding: 0; }
     #vehicle-menu li { margin: 10px 0; font-size: 18px; opacity: 0.5; transition: opacity 0.2s; }
     #vehicle-menu li.selected { opacity: 1; }
-    #gameCanvas { display: none; width: 100%; height: 100%; }
+    #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
     #crt-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0.1) 1px, rgba(0,0,0,0) 2px); mix-blend-mode: multiply; }
   </style>
 </head>
@@ -107,6 +107,7 @@
       }
     }
     function startRace() {
+      isDemo = false;
       menu.style.display = 'none';
       document.getElementById('gameCanvas').style.display = 'block';
       setupAudio();
@@ -154,6 +155,7 @@
     // GAME & THREE.JS SETUP
     let scene, camera, renderer, vehicle, keys = {}, trackCurve;
     let physicsWorld, chassisBody, vehiclePhysics;
+    let isDemo = true, demoT = 0;
 
     function initGame() {
       const canvas = document.getElementById('gameCanvas');
@@ -312,29 +314,21 @@
       // Physics step
       if (physicsWorld) {
         // Control input
-        const maxForce = 1500;
-        const maxSteer = 0.5;
-        // Engine force
-        if (keys.ArrowUp) {
-          vehiclePhysics.applyEngineForce(-maxForce, 2);
-          vehiclePhysics.applyEngineForce(-maxForce, 3);
-        } else if (keys.ArrowDown) {
-          vehiclePhysics.applyEngineForce(maxForce, 2);
-          vehiclePhysics.applyEngineForce(maxForce, 3);
+        const maxForce = 1500, maxSteer = 0.5;
+        if (isDemo) {
+          demoT = (demoT + 0.0005) % 1;
+          vehiclePhysics.applyEngineForce(-maxForce,2); vehiclePhysics.applyEngineForce(-maxForce,3);
+          const tangent = trackCurve.getTangentAt(demoT);
+          const forward = chassisBody.quaternion.vmult(new CANNON.Vec3(0,0,1));
+          const steerVal = Math.max(-maxSteer, Math.min(maxSteer, tangent.x*forward.z - tangent.z*forward.x));
+          vehiclePhysics.setSteeringValue(steerVal,0); vehiclePhysics.setSteeringValue(steerVal,1);
         } else {
-          vehiclePhysics.applyEngineForce(0, 2);
-          vehiclePhysics.applyEngineForce(0, 3);
-        }
-        // Steering
-        if (keys.ArrowLeft) {
-          vehiclePhysics.setSteeringValue(maxSteer, 0);
-          vehiclePhysics.setSteeringValue(maxSteer, 1);
-        } else if (keys.ArrowRight) {
-          vehiclePhysics.setSteeringValue(-maxSteer, 0);
-          vehiclePhysics.setSteeringValue(-maxSteer, 1);
-        } else {
-          vehiclePhysics.setSteeringValue(0, 0);
-          vehiclePhysics.setSteeringValue(0, 1);
+          if (keys.ArrowUp) { vehiclePhysics.applyEngineForce(-maxForce,2); vehiclePhysics.applyEngineForce(-maxForce,3); }
+          else if (keys.ArrowDown) { vehiclePhysics.applyEngineForce(maxForce,2); vehiclePhysics.applyEngineForce(maxForce,3); }
+          else { vehiclePhysics.applyEngineForce(0,2); vehiclePhysics.applyEngineForce(0,3); }
+          if (keys.ArrowLeft) { vehiclePhysics.setSteeringValue(maxSteer,0); vehiclePhysics.setSteeringValue(maxSteer,1); }
+          else if (keys.ArrowRight) { vehiclePhysics.setSteeringValue(-maxSteer,0); vehiclePhysics.setSteeringValue(-maxSteer,1); }
+          else { vehiclePhysics.setSteeringValue(0,0); vehiclePhysics.setSteeringValue(0,1); }
         }
         // Step world
         physicsWorld.step(1/60);
@@ -426,6 +420,9 @@
       crtOverlay.style.display = isCRTEnabled ? 'block' : 'none';
       options[4].textContent = isCRTEnabled ? 'Toggle CRT: On' : 'Toggle CRT: Off';
     }
+
+    // Auto-start demo on load
+    window.addEventListener('load', () => initGame());
   </script>
 </body>
 </html>
