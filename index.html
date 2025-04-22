@@ -75,12 +75,21 @@
       options.forEach(opt => opt.classList.remove('selected'));
       options[menuIndex].classList.add('selected');
     }
+    options.forEach(opt => opt.addEventListener('click', e => {
+      const idx = parseInt(opt.dataset.index);
+      menuIndex = idx;
+      updateMenu();
+      selectOption(menuIndex);
+    }));
     window.addEventListener('keydown', e => {
+      // Prevent default on arrow and enter when in menus
+      if (['ArrowUp','ArrowDown','Enter','Escape'].includes(e.code)) e.preventDefault();
       if (inVehicleMenu) {
         if (e.code === 'ArrowUp') { vehicleMenuIndex = (vehicleMenuIndex - 1 + vehicleOptions.length) % vehicleOptions.length; updateVehicleMenu(); }
         if (e.code === 'ArrowDown') { vehicleMenuIndex = (vehicleMenuIndex + 1) % vehicleOptions.length; updateVehicleMenu(); }
         if (e.code === 'Enter') { confirmVehicle(); }
-        if (e.code === 'Escape') { vehicleMenu.style.display = 'none'; menu.style.display = 'block'; inVehicleMenu = false; return; }
+        if (e.code === 'Escape') { vehicleMenu.style.display = 'none'; menu.style.display = 'block'; inVehicleMenu = false; }
+        return;
       }
       if (menu.style.display !== 'none') {
         if (e.code === 'ArrowUp') { menuIndex = (menuIndex - 1 + options.length) % options.length; updateMenu(); }
@@ -128,6 +137,12 @@
       vehicleOptions.forEach(opt => opt.classList.remove('selected'));
       vehicleOptions[vehicleMenuIndex].classList.add('selected');
     }
+    vehicleOptions.forEach(opt => opt.addEventListener('click', e => {
+      const idx = parseInt(opt.dataset.index);
+      vehicleMenuIndex = idx;
+      updateVehicleMenu();
+      confirmVehicle();
+    }));
     function confirmVehicle() {
       selectedVehicle = vehicleOptions[vehicleMenuIndex].textContent;
       options[1].textContent = 'Select Vehicle: ' + selectedVehicle;
