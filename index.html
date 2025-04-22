@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Funny PS1‑Vibe Racing Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; font-family: 'Press Start 2P', monospace; color: #fff; overflow: hidden; }
+    #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    #menu h1 { margin-bottom: 20px; font-size: 24px; }
+    #menu ul { list-style: none; padding: 0; }
+    #menu li { margin: 10px 0; font-size: 18px; opacity: 0.5; transition: opacity 0.2s; }
+    #menu li.selected { opacity: 1; }
+    #gameCanvas { display: none; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="menu">
+    <h1>PS1 Vibe Racer</h1>
+    <ul id="menu-options">
+      <li data-index="0" class="selected">Start Race</li>
+      <li data-index="1">Select Vehicle</li>
+      <li data-index="2">Toggle Music/SFX</li>
+      <li data-index="3">View High Scores</li>
+    </ul>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r146/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.41/Tone.min.js"></script>
+  <script>
+    // CODEX: Menu & UI logic
+    const menu = document.getElementById('menu');
+    const options = [...document.querySelectorAll('#menu-options li')];
+    let menuIndex = 0;
+    
+    function updateMenu() {
+      options.forEach(opt => opt.classList.remove('selected'));
+      options[menuIndex].classList.add('selected');
+    }
+    
+    window.addEventListener('keydown', e => {
+      if (menu.style.display !== 'none') {
+        if (e.code === 'ArrowUp') { menuIndex = (menuIndex - 1 + options.length) % options.length; updateMenu(); }
+        if (e.code === 'ArrowDown') { menuIndex = (menuIndex + 1) % options.length; updateMenu(); }
+        if (e.code === 'Enter') { selectOption(menuIndex); }
+      }
+    });
+    
+    function selectOption(index) {
+      switch (index) {
+        case 0: startRace(); break;
+        case 1: selectVehicle(); break;
+        case 2: toggleAudio(); break;
+        case 3: viewHighScores(); break;
+      }
+    }
+    
+    function startRace() {
+      menu.style.display = 'none';
+      document.getElementById('gameCanvas').style.display = 'block';
+      initGame();
+    }
+    
+    function selectVehicle() {
+      // TODO: implement vehicle selection UI
+    }
+    
+    function toggleAudio() {
+      // TODO: implement audio mute/unmute
+    }
+    
+    function viewHighScores() {
+      // TODO: implement high scores display
+    }
+    
+    function initGame() {
+      const canvas = document.getElementById('gameCanvas');
+      // CODEX: Initialize Three.js scene, camera, renderer on this canvas
+    }
+    // CODEX: Further game logic follows
+  </script>
+</body>
+</html>
