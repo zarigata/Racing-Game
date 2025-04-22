@@ -12,7 +12,13 @@
     #menu ul { list-style: none; padding: 0; }
     #menu li { margin: 10px 0; font-size: 18px; opacity: 0.5; transition: opacity 0.2s; }
     #menu li.selected { opacity: 1; }
+    #vehicle-menu { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    #vehicle-menu h1 { margin-bottom: 20px; font-size: 24px; }
+    #vehicle-menu ul { list-style: none; padding: 0; }
+    #vehicle-menu li { margin: 10px 0; font-size: 18px; opacity: 0.5; transition: opacity 0.2s; }
+    #vehicle-menu li.selected { opacity: 1; }
     #gameCanvas { display: none; width: 100%; height: 100%; }
+    #crt-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0.1) 1px, rgba(0,0,0,0) 2px); mix-blend-mode: multiply; }
   </style>
 </head>
 <body>
@@ -23,62 +29,216 @@
       <li data-index="1">Select Vehicle</li>
       <li data-index="2">Toggle Music/SFX</li>
       <li data-index="3">View High Scores</li>
+      <li data-index="4">Toggle CRT: On</li>
+    </ul>
+  </div>
+  <div id="vehicle-menu">
+    <h1>Select Vehicle</h1>
+    <ul id="vehicle-options">
+      <li data-index="0" class="selected">Toaster Car</li>
+      <li data-index="1">Rubber Duck</li>
+      <li data-index="2">Squeaky Hamburger</li>
     </ul>
   </div>
   <canvas id="gameCanvas"></canvas>
+  <div id="crt-overlay"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r146/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/postprocessing/ShaderPass.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.41/Tone.min.js"></script>
   <script>
-    // CODEX: Menu & UI logic
     const menu = document.getElementById('menu');
     const options = [...document.querySelectorAll('#menu-options li')];
     let menuIndex = 0;
-    
+    let selectedVehicle = 'Toaster Car';
+    let isMusicMuted = false;
+    let inVehicleMenu = false;
+    let vehicleMenuIndex = 0;
+    const vehicleMenu = document.getElementById('vehicle-menu');
+    const vehicleOptions = [...document.querySelectorAll('#vehicle-options li')];
+    let isCRTEnabled = true;
+    const crtOverlay = document.getElementById('crt-overlay');
+    let composer, crtPass;
+    const CRTShader = {
+      uniforms: {
+        tDiffuse: { value: null },
+        resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+      },
+      vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 resolution; varying vec2 vUv; void main(){ vec2 uv=vUv; vec2 c=uv*2.0-1.0; c.x*=1.0+(abs(c.y)/resolution.x)*0.1; c.y*=1.0+(abs(c.x)/resolution.y)*0.1; uv=(c+1.0)/2.0; vec4 col=texture2D(tDiffuse,uv); float scan=sin(uv.y*resolution.y*1.5)*0.03; col.rgb-=scan; gl_FragColor=col; }`
+    };
+
+    // MENU FUNCTIONS
     function updateMenu() {
       options.forEach(opt => opt.classList.remove('selected'));
       options[menuIndex].classList.add('selected');
     }
-    
     window.addEventListener('keydown', e => {
+      if (inVehicleMenu) {
+        if (e.code === 'ArrowUp') { vehicleMenuIndex = (vehicleMenuIndex - 1 + vehicleOptions.length) % vehicleOptions.length; updateVehicleMenu(); }
+        if (e.code === 'ArrowDown') { vehicleMenuIndex = (vehicleMenuIndex + 1) % vehicleOptions.length; updateVehicleMenu(); }
+        if (e.code === 'Enter') { confirmVehicle(); }
+        if (e.code === 'Escape') { vehicleMenu.style.display = 'none'; menu.style.display = 'block'; inVehicleMenu = false; return; }
+      }
       if (menu.style.display !== 'none') {
         if (e.code === 'ArrowUp') { menuIndex = (menuIndex - 1 + options.length) % options.length; updateMenu(); }
         if (e.code === 'ArrowDown') { menuIndex = (menuIndex + 1) % options.length; updateMenu(); }
         if (e.code === 'Enter') { selectOption(menuIndex); }
       }
     });
-    
     function selectOption(index) {
       switch (index) {
         case 0: startRace(); break;
         case 1: selectVehicle(); break;
         case 2: toggleAudio(); break;
         case 3: viewHighScores(); break;
+        case 4: toggleCRT(); break;
       }
     }
-    
     function startRace() {
       menu.style.display = 'none';
       document.getElementById('gameCanvas').style.display = 'block';
+      setupAudio();
       initGame();
     }
-    
     function selectVehicle() {
-      // TODO: implement vehicle selection UI
+      menu.style.display = 'none';
+      vehicleMenu.style.display = 'block';
+      inVehicleMenu = true;
+      vehicleMenuIndex = 0;
+      updateVehicleMenu();
     }
-    
     function toggleAudio() {
-      // TODO: implement audio mute/unmute
+      isMusicMuted = !isMusicMuted;
+      if (isMusicMuted) Tone.Transport.pause(); else Tone.Transport.start();
+      options[2].textContent = isMusicMuted ? 'Unmute Audio' : 'Mute Audio';
     }
-    
     function viewHighScores() {
-      // TODO: implement high scores display
+      const scores = JSON.parse(localStorage.getItem('highScores') || '[]');
+      let msg = 'High Scores:\n';
+      if (scores.length === 0) msg += 'No records yet.';
+      else scores.forEach((s,i) => msg += `${i+1}. ${s.name}: ${s.time}s\n`);
+      alert(msg);
     }
-    
+
+    // VEHICLE MENU HELPERS
+    function updateVehicleMenu() {
+      vehicleOptions.forEach(opt => opt.classList.remove('selected'));
+      vehicleOptions[vehicleMenuIndex].classList.add('selected');
+    }
+    function confirmVehicle() {
+      selectedVehicle = vehicleOptions[vehicleMenuIndex].textContent;
+      options[1].textContent = 'Select Vehicle: ' + selectedVehicle;
+      vehicleMenu.style.display = 'none';
+      menu.style.display = 'block';
+      inVehicleMenu = false;
+    }
+
+    // GAME & THREE.JS SETUP
+    let scene, camera, renderer, vehicle, keys = {};
     function initGame() {
       const canvas = document.getElementById('gameCanvas');
-      // CODEX: Initialize Three.js scene, camera, renderer on this canvas
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      // POSTPROCESSING CRT EFFECT
+      composer = new THREE.EffectComposer(renderer);
+      composer.addPass(new THREE.RenderPass(scene, camera));
+      crtPass = new THREE.ShaderPass(CRTShader);
+      composer.addPass(crtPass);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.position.set(0, 5, 10);
+      window.addEventListener('resize', onWindowResize);
+      setupScene();
+      animate();
     }
-    // CODEX: Further game logic follows
+    function setupScene() {
+      // Ground
+      const groundGeom = new THREE.PlaneGeometry(100, 100);
+      const groundMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+      const ground = new THREE.Mesh(groundGeom, groundMat);
+      ground.rotation.x = -Math.PI/2;
+      scene.add(ground);
+      // Vehicle
+      const baseColor = selectedVehicle === 'Rubber Duck' ? '#FFD23F' : selectedVehicle === 'Squeaky Hamburger' ? '#8B4513' : '#FF8C00';
+      vehicle = createVehicle(baseColor);
+      vehicle.position.y = 0.25;
+      scene.add(vehicle);
+      // Input
+      window.addEventListener('keydown', e => keys[e.code] = true);
+      window.addEventListener('keyup', e => keys[e.code] = false);
+    }
+    function createVehicle(color) {
+      const geom = new THREE.BoxGeometry(1, 0.5, 2);
+      const tex = generateProceduralTexture(color);
+      const mat = new THREE.MeshBasicMaterial({ map: tex });
+      return new THREE.Mesh(geom, mat);
+    }
+
+    // ANIMATION LOOP
+    function animate() {
+      requestAnimationFrame(animate);
+      const moveSpeed = 0.1, rotSpeed = 0.03;
+      if (keys.ArrowLeft) vehicle.rotation.y += rotSpeed;
+      if (keys.ArrowRight) vehicle.rotation.y -= rotSpeed;
+      if (keys.ArrowUp) {
+        vehicle.position.x += Math.sin(vehicle.rotation.y) * moveSpeed;
+        vehicle.position.z += Math.cos(vehicle.rotation.y) * moveSpeed;
+      }
+      if (keys.ArrowDown) {
+        vehicle.position.x -= Math.sin(vehicle.rotation.y) * moveSpeed;
+        vehicle.position.z -= Math.cos(vehicle.rotation.y) * moveSpeed;
+      }
+      camera.position.set(vehicle.position.x, vehicle.position.y + 5, vehicle.position.z + 10);
+      camera.lookAt(vehicle.position);
+      if(isCRTEnabled && composer) composer.render(); else renderer.render(scene, camera);
+    }
+
+    // PROCEDURAL TEXTURE
+    function generateProceduralTexture(color) {
+      const size = 32;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = color; ctx.fillRect(0, 0, size, size);
+      for (let i = 0; i < 100; i++) {
+        ctx.fillStyle = `hsl(${Math.random()*360}, 80%, 60%)`;
+        ctx.fillRect(Math.random()*size, Math.random()*size, 1, 1);
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.magFilter = THREE.NearestFilter;
+      texture.minFilter = THREE.NearestFilter;
+      return texture;
+    }
+
+    // AUDIO
+    function setupAudio() {
+      Tone.Transport.bpm.value = 130;
+      const lead = new Tone.Synth({ oscillator: { type: 'square' } }).toDestination();
+      const bass = new Tone.Synth({ oscillator: { type: 'triangle' } }).toDestination();
+      new Tone.Sequence((t,n) => lead.triggerAttackRelease(n, '8n', t), ['C4','E4','G4','B4'], '4n').start(0);
+      new Tone.Sequence((t,n) => bass.triggerAttackRelease(n, '2n', t), ['C2','C2','C2','C2'], '1n').start(0);
+      Tone.Transport.start();
+    }
+
+    // RESIZE HANDLER
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      if(composer) {
+        composer.setSize(window.innerWidth, window.innerHeight);
+        CRTShader.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+      }
+    }
+
+    // CRT TOGGLE
+    function toggleCRT() {
+      isCRTEnabled = !isCRTEnabled;
+      crtOverlay.style.display = isCRTEnabled ? 'block' : 'none';
+      options[4].textContent = isCRTEnabled ? 'Toggle CRT: On' : 'Toggle CRT: Off';
+    }
   </script>
 </body>
 </html>
