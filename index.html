@@ -136,7 +136,7 @@
     }
 
     // GAME & THREE.JS SETUP
-    let scene, camera, renderer, vehicle, keys = {};
+    let scene, camera, renderer, vehicle, keys = {}, trackCurve;
     function initGame() {
       const canvas = document.getElementById('gameCanvas');
       scene = new THREE.Scene();
@@ -156,10 +156,15 @@
     function setupScene() {
       // Ground
       const groundGeom = new THREE.PlaneGeometry(100, 100);
-      const groundMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+      const trackTex = generateTrackTexture();
+      trackTex.repeat.set(20, 20);
+      const groundMat = new THREE.MeshBasicMaterial({ map: trackTex });
       const ground = new THREE.Mesh(groundGeom, groundMat);
       ground.rotation.x = -Math.PI/2;
       scene.add(ground);
+      // Create spline-based track
+      trackCurve = createTrack();
+
       // Vehicle
       const baseColor = selectedVehicle === 'Rubber Duck' ? '#FFD23F' : selectedVehicle === 'Squeaky Hamburger' ? '#8B4513' : '#FF8C00';
       vehicle = createVehicle(baseColor);
@@ -174,6 +179,35 @@
       const tex = generateProceduralTexture(color);
       const mat = new THREE.MeshBasicMaterial({ map: tex });
       return new THREE.Mesh(geom, mat);
+    }
+
+    // SPLINE-BASED TRACK GENERATION
+    function createTrack() {
+      // Define control points for a loop
+      const pts = [
+        new THREE.Vector3(-20, 0, -20),
+        new THREE.Vector3(20, 0, -20),
+        new THREE.Vector3(20, 0, 20),
+        new THREE.Vector3(-20, 0, 20)
+      ];
+      const curve = new THREE.CatmullRomCurve3(pts, true);
+      // Cross-section shape (track width and thickness)
+      const shape = new THREE.Shape();
+      const w = 5, h = 0.2;
+      shape.moveTo(-w/2, -h/2);
+      shape.lineTo(w/2, -h/2);
+      shape.lineTo(w/2, h/2);
+      shape.lineTo(-w/2, h/2);
+      shape.closePath();
+      const extrudeSettings = { steps: 200, bevelEnabled: false, extrudePath: curve };
+      const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      geo.rotateX(-Math.PI/2);
+      const tex = generateTrackTexture();
+      tex.repeat.set(200,1);
+      const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(geo, mat);
+      scene.add(mesh);
+      return curve;
     }
 
     // ANIMATION LOOP
@@ -209,6 +243,41 @@
       const texture = new THREE.CanvasTexture(canvas);
       texture.magFilter = THREE.NearestFilter;
       texture.minFilter = THREE.NearestFilter;
+      return texture;
+    }
+
+    // TRACK PROCEDURAL TEXTURE GENERATOR
+    function generateTrackTexture() {
+      const size = 32;
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // Base color
+      ctx.fillStyle = '#555'; ctx.fillRect(0, 0, size, size);
+      // Light noise
+      for (let i = 0; i < 400; i++) {
+        const x = Math.random() * size, y = Math.random() * size;
+        ctx.fillStyle = `rgba(200,200,200,${Math.random() * 0.2})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+      // Ketchup splats
+      for (let i = 0; i < 15; i++) {
+        const x = Math.random() * size, y = Math.random() * size, r = Math.random() * 3 + 1;
+        ctx.fillStyle = 'rgba(200,0,0,0.7)'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+      // Paw prints
+      for (let i = 0; i < 10; i++) {
+        const x = Math.random() * (size - 6) + 3, y = Math.random() * (size - 6) + 3;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        for (let p = 0; p < 5; p++) {
+          const angle = Math.random() * Math.PI * 2;
+          const rx = x + Math.cos(angle) * 2, ry = y + Math.sin(angle) * 2;
+          ctx.beginPath(); ctx.arc(rx, ry, 1, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.magFilter = THREE.NearestFilter;
+      texture.minFilter = THREE.NearestFilter;
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       return texture;
     }
 
