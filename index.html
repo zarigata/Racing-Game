@@ -183,13 +183,13 @@
 
     // SPLINE-BASED TRACK GENERATION
     function createTrack() {
-      // Define control points for a loop
-      const pts = [
-        new THREE.Vector3(-20, 0, -20),
-        new THREE.Vector3(20, 0, -20),
-        new THREE.Vector3(20, 0, 20),
-        new THREE.Vector3(-20, 0, 20)
+      // Choose a random layout
+      const layouts = [
+        [new THREE.Vector3(-20,0,-20), new THREE.Vector3(20,0,-20), new THREE.Vector3(20,0,20), new THREE.Vector3(-20,0,20)],
+        [new THREE.Vector3(-15,0,0), new THREE.Vector3(0,0,15), new THREE.Vector3(15,0,0), new THREE.Vector3(0,0,-15)],
+        [new THREE.Vector3(-20,0,-10), new THREE.Vector3(-10,0,20), new THREE.Vector3(10,0,-20), new THREE.Vector3(20,0,10)]
       ];
+      const pts = layouts[Math.floor(Math.random()*layouts.length)];
       const curve = new THREE.CatmullRomCurve3(pts, true);
       // Cross-section shape (track width and thickness)
       const shape = new THREE.Shape();
@@ -207,7 +207,26 @@
       const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
       const mesh = new THREE.Mesh(geo, mat);
       scene.add(mesh);
+      // Add decorative bumps along the track
+      createTrackBumps(curve, w);
       return curve;
+    }
+
+    // Decorative track bumps (not obstacles)
+    function createTrackBumps(curve, width) {
+      const count = 30;
+      for (let i = 0; i < count; i++) {
+        const t = Math.random();
+        const pos = curve.getPointAt(t);
+        const tan = curve.getTangentAt(t);
+        const angle = Math.atan2(tan.x, tan.z);
+        const bumpGeom = new THREE.BoxGeometry(width*1.2, 0.1, 0.2);
+        const bumpMat = new THREE.MeshBasicMaterial({ color: 0x888888 });
+        const bump = new THREE.Mesh(bumpGeom, bumpMat);
+        bump.position.set(pos.x, 0.05, pos.z);
+        bump.rotation.y = angle;
+        scene.add(bump);
+      }
     }
 
     // ANIMATION LOOP
