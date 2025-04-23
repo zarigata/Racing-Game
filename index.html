@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS1-Vibe Racing Game</title>
+    <!-- CODEX: Include pixelated font -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Three.js for 3D rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Tone.js for sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
+    <!-- noise.js for procedural textures -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noisejs/2.0.0/perlin.min.js"></script>
+    <!-- MIDI.js for MIDI playback -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/MIDI.js/0.3.0/MIDI.min.js"></script>
+</head>
+<body>
+    <!-- CODEX: Game canvas container -->
+    <canvas id="game-canvas"></canvas>
+    <!-- Load game modules -->
+    <script src="assets.js"></script>
+    <script src="render.js"></script>
+    <script src="input.js"></script>
+    <script src="audio.js"></script>
+    <script src="gameLogic.js"></script>
+    <script src="ui.js"></script>
+    <script src="drivers.js"></script>
+    <script src="tracks.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
