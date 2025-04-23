@@ -4,14 +4,19 @@ const audio = {
     musicVolume: 1,  // 0.0 to 1.0
     sfxVolume: 1,    // 0.0 to 1.0
     init: function() {
-        // Initialize MIDI
-        MIDI.loadPlugin({
-            soundfontUrl: "./soundfonts/",
-            instrument: "acoustic_grand_piano",
-            onsuccess: () => {
-                console.log('MIDI ready');
-            }
-        });
+        // Initialize MIDI (if loaded)
+        if (typeof MIDI !== 'undefined') {
+            // Initialize MIDI
+            MIDI.loadPlugin({
+                soundfontUrl: "./soundfonts/",
+                instrument: "acoustic_grand_piano",
+                onsuccess: () => {
+                    console.log('MIDI ready');
+                }
+            });
+        } else {
+            console.warn('MIDI.js not loaded, music disabled');
+        }
         // Initialize Tone.js context
         Tone.start();
     },
@@ -33,6 +38,11 @@ const audio = {
         this.sfxVolume = v;
     },
     playMIDI: function(track) {
+        // Guard MIDI player availability
+        if (typeof MIDI === 'undefined' || !MIDI.player) {
+            console.warn('MIDI player unavailable');
+            return;
+        }
         MIDI.player.stop();
         // apply volume
         if (MIDI.player) MIDI.player.volume = this.musicVolume * 127;
