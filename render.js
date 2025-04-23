@@ -27,13 +27,13 @@ function initRender() {
 function initSceneObjects() {
     // ground plane
     const geo = new THREE.PlaneGeometry(100, 100, 10, 10);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x444444, side: THREE.DoubleSide });
+    const mat = new THREE.MeshStandardMaterial({ map: assets.trackTexture, side: THREE.DoubleSide });
     const ground = new THREE.Mesh(geo, mat);
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
     // player car
     const carGeo = new THREE.BoxGeometry(1, 0.5, 2);
-    const carMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    const carMat = new THREE.MeshStandardMaterial({ map: assets.carTexture });
     const car = new THREE.Mesh(carGeo, carMat);
     car.position.set(0, 0.25, 0);
     car.name = 'playerCar';
