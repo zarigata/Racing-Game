@@ -1,12 +1,15 @@
 /* CODEX: UI manager with Twisted Metal style menus and HUD */
 const ui = {
-    state: 'menu', // 'menu' or 'race'
+    state: 'menu', // 'menu', 'trackSelect', or 'race'
     elements: {},
     menuItems: [],
     selectedIndex: 0,
+    trackItems: [],
+    trackIndex: 0,
     init: function() {
         console.log('UI: init');
         this.createMenu();
+        this.createTrackMenu();
         this.createHUD();
         this.showMenu();
     },
@@ -28,13 +31,48 @@ const ui = {
         this.menuItems = Array.from(menu.querySelectorAll('.menu-item'));
         window.addEventListener('keydown', this.handleMenuInput.bind(this));
     },
+    createTrackMenu: function() {
+        const menu = document.createElement('div');
+        menu.id = 'track-menu';
+        menu.className = 'ui menu';
+        let html = '<h2>Select Track</h2><ul class="track-list">';
+        tracks.types.forEach((t,i) => {
+            html += `<li class="track-item${i===0?' selected':''}" data-name="${t}">${t}</li>`;
+        });
+        html += '</ul><p class="hint">Use ← → and Enter</p>';
+        menu.innerHTML = html;
+        document.body.appendChild(menu);
+        this.elements.trackMenu = menu;
+        this.trackItems = Array.from(menu.querySelectorAll('.track-item'));
+        this.trackIndex = 0;
+        menu.style.display = 'none';
+        window.addEventListener('keydown', this.handleTrackInput.bind(this));
+    },
     handleMenuInput: function(e) {
         if (this.state !== 'menu') return;
         if (e.code === 'ArrowUp' || e.code === 'KeyW') this.changeSelection(-1);
         else if (e.code === 'ArrowDown' || e.code === 'KeyS') this.changeSelection(1);
         else if (e.code === 'Enter') {
             const choice = this.menuItems[this.selectedIndex].innerText;
-            if (choice === 'Start Race') this.startRace();
+            if (choice === 'Start Race') this.showTrackMenu();
+        }
+    },
+    handleTrackInput: function(e) {
+        if (this.state !== 'trackSelect') return;
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+            this.trackItems[this.trackIndex].classList.remove('selected');
+            this.trackIndex = (this.trackIndex - 1 + this.trackItems.length) % this.trackItems.length;
+            this.trackItems[this.trackIndex].classList.add('selected');
+        } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+            this.trackItems[this.trackIndex].classList.remove('selected');
+            this.trackIndex = (this.trackIndex + 1) % this.trackItems.length;
+            this.trackItems[this.trackIndex].classList.add('selected');
+        } else if (e.code === 'Enter') {
+            const name = this.trackItems[this.trackIndex].dataset.name;
+            this.hideTrackMenu();
+            tracks.generate(name);
+            this.startRace();
+            audio.playMIDI('music/track1.mid');
         }
     },
     changeSelection: function(dir) {
@@ -45,10 +83,19 @@ const ui = {
     showMenu: function() {
         this.state = 'menu';
         this.elements.menu.style.display = 'flex';
+        this.elements.trackMenu && (this.elements.trackMenu.style.display = 'none');
         this.hideHUD();
     },
     hideMenu: function() {
         this.elements.menu.style.display = 'none';
+    },
+    showTrackMenu: function() {
+        this.state = 'trackSelect';
+        this.hideMenu();
+        this.elements.trackMenu.style.display = 'flex';
+    },
+    hideTrackMenu: function() {
+        this.elements.trackMenu.style.display = 'none';
     },
     createHUD: function() {
         const hud = document.createElement('div');
@@ -70,9 +117,10 @@ const ui = {
         this.elements.hud.style.display = 'none';
     },
     startRace: function() {
-        this.hideMenu();
-        this.showHUD();
         this.state = 'race';
+        this.showHUD();
+        this.hideMenu();
+        this.hideTrackMenu();
     },
     updateHUD: function() {
         if (this.state !== 'race') return;

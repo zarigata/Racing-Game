@@ -6,6 +6,11 @@ const gameLogic = {
     maxSpeed: 5,
     accel: 10,
     friction: 8,
+    powerupsHeld: 0,
+    projectiles: [],
+    boostCharges: 3,
+    boostCooldown: 1, // seconds
+    boostTimer: 0,
     init: function() {
         this.player = scene.getObjectByName('playerCar');
         console.log('GameLogic: init, player:', this.player);
@@ -22,6 +27,10 @@ const gameLogic = {
             scene.add(mesh);
             this.aiDrivers.push({ mesh, speed: d.stats.speed * this.maxSpeed, handling: d.stats.handling * 2, wpIndex: 0 });
         });
+        this.powerupsHeld = 0;
+        this.projectiles = [];
+        this.boostCharges = 3;
+        this.boostTimer = 0;
     },
     update: function(delta) {
         if (!this.player) return;
@@ -29,8 +38,16 @@ const gameLogic = {
         if (input.keys['ArrowUp']) this.speed += this.accel * delta;
         else if (input.keys['ArrowDown']) this.speed -= this.accel * delta;
         else this.speed -= this.friction * delta * Math.sign(this.speed);
+        // update boost cooldown
+        this.boostTimer = Math.max(0, this.boostTimer - delta);
         // clamp speed
         this.speed = Math.max(0, Math.min(this.maxSpeed, this.speed));
+        // boost mechanic
+        if (input.keys['Space'] && this.boostCharges > 0 && this.boostTimer <= 0) {
+            this.speed += this.maxSpeed * 1.5;
+            this.boostCharges--;
+            this.boostTimer = this.boostCooldown;
+        }
         // steering
         if (input.keys['ArrowLeft']) this.player.rotation.y += delta * 2;
         if (input.keys['ArrowRight']) this.player.rotation.y -= delta * 2;
@@ -46,6 +63,50 @@ const gameLogic = {
         } else if (r < tracks.innerR + 1) {
             pos.set((pos.x / r) * (tracks.innerR + 1), pos.y, (pos.z / r) * (tracks.innerR + 1));
             this.speed = 0;
+        }
+        // CODEX: hazard collision detection
+        const playerBox = new THREE.Box3().setFromObject(this.player);
+        tracks.hazards.forEach(h => {
+            const hazardBox = new THREE.Box3().setFromObject(h);
+            if (playerBox.intersectsBox(hazardBox)) {
+                this.speed = 0;
+            }
+        });
+        // CODEX: pickup power-ups (reuse playerBox)
+        tracks.powerups.forEach((p, idx) => {
+            const pb = new THREE.Box3().setFromObject(p);
+            if (playerBox.intersectsBox(pb)) {
+                tracks.powerups.splice(idx, 1);
+                scene.remove(p);
+                this.powerupsHeld++;
+            }
+        });
+        // CODEX: fire weapon
+        if (input.keys['KeyF'] && this.powerupsHeld > 0) {
+            this.firePowerup();
+        }
+        // CODEX: update projectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const pr = this.projectiles[i];
+            pr.remaining -= delta;
+            if (pr.remaining <= 0) {
+                scene.remove(pr.mesh);
+                this.projectiles.splice(i, 1);
+                continue;
+            }
+            pr.mesh.position.addScaledVector(pr.direction, pr.speed * delta);
+            const projBox = new THREE.Box3().setFromObject(pr.mesh);
+            // collision with AI
+            for (let j = this.aiDrivers.length - 1; j >= 0; j--) {
+                const ai = this.aiDrivers[j];
+                const aiBox = new THREE.Box3().setFromObject(ai.mesh);
+                if (projBox.intersectsBox(aiBox)) {
+                    ai.speed *= 0.5;
+                    scene.remove(pr.mesh);
+                    this.projectiles.splice(i, 1);
+                    break;
+                }
+            }
         }
         // CODEX: update AI opponents
         this.aiDrivers.forEach(ai => this.updateAI(ai, delta));
@@ -74,5 +135,18 @@ const gameLogic = {
         if (pr > maxR || pr < minR) {
             mesh.position.set((mesh.position.x / pr) * maxR, mesh.position.y, (mesh.position.z / pr) * maxR);
         }
+    },
+    // CODEX: fire a projectile to damage AI
+    firePowerup: function() {
+        const sphere = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 8, 8),
+            new THREE.MeshStandardMaterial({ color: 0xff0000 })
+        );
+        // spawn at player's position
+        sphere.position.copy(this.player.position).add(new THREE.Vector3(0, 0.5, 0));
+        const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.player.quaternion).normalize();
+        scene.add(sphere);
+        this.projectiles.push({ mesh: sphere, direction: dir, speed: 15, remaining: 3 });
+        this.powerupsHeld--;
     }
 };

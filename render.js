@@ -43,6 +43,7 @@ function animate(timestamp) {
     requestAnimationFrame(animate);
     const delta = (timestamp - lastTimestamp) / 1000 || 0;
     lastTimestamp = timestamp;
+    assets.updateWallpaper(delta);
     gameLogic.update(delta);
     ui.updateHUD();
     // camera follow
