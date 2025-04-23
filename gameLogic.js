@@ -8,6 +8,11 @@ const gameLogic = {
     friction: 8,
     powerupsHeld: 0,
     projectiles: [],
+    // CODEX: lap & finish tracking
+    currentLap: 1,
+    totalLaps: 3,
+    prevZ: 0,
+    raceFinished: false,
     boostCharges: 3,
     boostCooldown: 1, // seconds
     boostTimer: 0,
@@ -29,11 +34,17 @@ const gameLogic = {
         });
         this.powerupsHeld = 0;
         this.projectiles = [];
+        // CODEX: init lap state
+        this.currentLap = 1;
+        this.prevZ = this.player.position.z;
+        this.raceFinished = false;
         this.boostCharges = 3;
         this.boostTimer = 0;
     },
     update: function(delta) {
         if (!this.player) return;
+        // CODEX: halt updates after finish
+        if (this.raceFinished) return;
         // accelerate/decelerate
         if (input.keys['ArrowUp']) this.speed += this.accel * delta;
         else if (input.keys['ArrowDown']) this.speed -= this.accel * delta;
@@ -45,9 +56,18 @@ const gameLogic = {
         // boost mechanic
         if (input.keys['Space'] && this.boostCharges > 0 && this.boostTimer <= 0) {
             this.speed += this.maxSpeed * 1.5;
+            audio.playSoundEffect('G5'); // boost sound
             this.boostCharges--;
             this.boostTimer = this.boostCooldown;
         }
+        // lap detection (crossing z=0 plane)
+        const currZ = this.player.position.z;
+        if (this.prevZ < 0 && currZ >= 0) {
+            this.currentLap++;
+            console.log('Lap', this.currentLap);
+            if (this.currentLap > this.totalLaps) this.endRace();
+        }
+        this.prevZ = currZ;
         // steering
         if (input.keys['ArrowLeft']) this.player.rotation.y += delta * 2;
         if (input.keys['ArrowRight']) this.player.rotation.y -= delta * 2;
@@ -70,6 +90,7 @@ const gameLogic = {
             const hazardBox = new THREE.Box3().setFromObject(h);
             if (playerBox.intersectsBox(hazardBox)) {
                 this.speed = 0;
+                audio.playSoundEffect('C2'); // collision sound
             }
         });
         // CODEX: pickup power-ups (reuse playerBox)
@@ -79,6 +100,7 @@ const gameLogic = {
                 tracks.powerups.splice(idx, 1);
                 scene.remove(p);
                 this.powerupsHeld++;
+                audio.playSoundEffect('E4'); // pickup sound
             }
         });
         // CODEX: fire weapon
@@ -102,6 +124,7 @@ const gameLogic = {
                 const aiBox = new THREE.Box3().setFromObject(ai.mesh);
                 if (projBox.intersectsBox(aiBox)) {
                     ai.speed *= 0.5;
+                    audio.playSoundEffect('D4'); // hit sound
                     scene.remove(pr.mesh);
                     this.projectiles.splice(i, 1);
                     break;
@@ -146,7 +169,19 @@ const gameLogic = {
         sphere.position.copy(this.player.position).add(new THREE.Vector3(0, 0.5, 0));
         const dir = new THREE.Vector3(0, 0, 1).applyQuaternion(this.player.quaternion).normalize();
         scene.add(sphere);
+        audio.playSoundEffect('A4'); // fire sound
         this.projectiles.push({ mesh: sphere, direction: dir, speed: 15, remaining: 3 });
         this.powerupsHeld--;
+    },
+    // CODEX: stub finish race handler
+    endRace: function() {
+        this.raceFinished = true;
+        console.log('Race Complete');
+        ui.showEndScreen();
+    },
+    // CODEX: stub position calculation, returns 1 by default
+    getPosition: function() {
+        // TODO: calculate based on laps and distance
+        return 1;
     }
 };

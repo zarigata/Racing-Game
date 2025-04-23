@@ -11,6 +11,8 @@ const ui = {
         this.createMenu();
         this.createTrackMenu();
         this.createHUD();
+        this.createEndScreen();
+        this.createSettingsScreen();
         this.showMenu();
     },
     createMenu: function() {
@@ -55,6 +57,8 @@ const ui = {
         else if (e.code === 'Enter') {
             const choice = this.menuItems[this.selectedIndex].innerText;
             if (choice === 'Start Race') this.showTrackMenu();
+            else if (choice === 'Settings') this.showSettings();
+            else if (choice === 'Exit') window.close();
         }
     },
     handleTrackInput: function(e) {
@@ -130,5 +134,56 @@ const ui = {
         if (lapEl) lapEl.innerText = 'Lap: ' + gameLogic.currentLap + '/' + gameLogic.totalLaps;
         const posEl = document.getElementById('position');
         if (posEl) posEl.innerText = 'Pos: ' + gameLogic.getPosition() + '/' + (gameLogic.aiDrivers.length + 1);
+    },
+    // CODEX: end-of-race screen setup
+    createEndScreen: function() {
+        const screen = document.createElement('div');
+        screen.id = 'end-screen';
+        screen.className = 'ui end-screen';
+        screen.innerHTML = `
+            <h1>Race Complete!</h1>
+            <p id="final-position"></p>
+            <button id="restart-btn">Restart</button>
+        `;
+        screen.style.display = 'none';
+        document.body.appendChild(screen);
+        this.elements.endScreen = screen;
+        document.getElementById('restart-btn').addEventListener('click', () => window.location.reload());
+    },
+    showEndScreen: function() {
+        this.state = 'end';
+        this.hideHUD();
+        this.hideMenu();
+        this.hideTrackMenu();
+        const posEl = document.getElementById('final-position');
+        if (posEl) posEl.innerText = 'Position: ' + gameLogic.getPosition() + ' / ' + (gameLogic.aiDrivers.length + 1);
+        this.elements.endScreen.style.display = 'flex';
+    },
+    // CODEX: settings panel
+    createSettingsScreen: function() {
+        const screen = document.createElement('div');
+        screen.id = 'settings-screen';
+        screen.className = 'ui settings-screen';
+        screen.innerHTML = `
+            <h2>Settings</h2>
+            <label>Music Volume: <input type="range" id="music-vol" min="0" max="1" step="0.01" value="${audio.musicVolume}"/></label>
+            <label>SFX Volume: <input type="range" id="sfx-vol" min="0" max="1" step="0.01" value="${audio.sfxVolume}"/></label>
+            <p><button id="settings-back">Back</button></p>
+        `;
+        screen.style.display = 'none';
+        document.body.appendChild(screen);
+        this.elements.settingsScreen = screen;
+        document.getElementById('music-vol').addEventListener('input', e => audio.setMusicVolume(parseFloat(e.target.value)));
+        document.getElementById('sfx-vol').addEventListener('input', e => audio.setSFXVolume(parseFloat(e.target.value)));
+        document.getElementById('settings-back').addEventListener('click', () => this.hideSettings());
+    },
+    showSettings: function() {
+        this.state = 'settings';
+        this.hideMenu();
+        this.elements.settingsScreen.style.display = 'flex';
+    },
+    hideSettings: function() {
+        this.elements.settingsScreen.style.display = 'none';
+        this.showMenu();
     }
 };
