@@ -18,3 +18,63 @@ body {
     color: #fff;
     text-shadow: 1px 1px 0 #000;
 }
+
+/* Twisted Metal style UI */
+.ui.menu {
+    display: none;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    font-size: 1.5em;
+    color: #e60000;
+    text-shadow: 0 0 5px #ff0000, 0 0 10px #ffffff;
+}
+.ui.menu .title {
+    font-size: 2em;
+    margin-bottom: 1em;
+    color: #ffffff;
+    text-shadow: 0 0 8px #ffffff;
+}
+.menu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.menu-item {
+    margin: 0.5em 0;
+    padding: 0.2em 1em;
+    cursor: pointer;
+}
+.menu-item.selected {
+    color: #ffffff;
+    background: rgba(230,0,0,0.5);
+    border: 2px solid #e60000;
+    box-shadow: 0 0 10px #e60000;
+}
+.hint {
+    margin-top: 1em;
+    font-size: 0.75em;
+    color: #bbb;
+}
+.ui.hud {
+    position: absolute;
+    top: 10px; left: 10px;
+    display: flex;
+    gap: 20px;
+    background: rgba(0,0,0,0.5);
+    padding: 5px 10px;
+    border: 2px solid #e60000;
+    box-shadow: 0 0 10px #e60000;
+    z-index: 5;
+}
+.hud-item {
+    font-size: 0.8em;
+    color: #ffffff;
+    text-shadow: 0 0 3px #000;
+}
