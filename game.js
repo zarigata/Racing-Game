@@ -9,5 +9,5 @@ window.addEventListener('load', () => {
     tracks.generate();
     // Start background music
     audio.playMIDI('music/track1.mid');
-    renderScene();
+    requestAnimationFrame(animate);
 });
