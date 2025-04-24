@@ -6,8 +6,7 @@ window.addEventListener('load', () => {
     audio.init();
     gameLogic.init();
     ui.init();
-    // CODEX: auto-start race immediately
-    ui.startRace();
+    console.log('DEBUG: Initialization complete — menu should be visible');
     tracks.generate();
     // Start background music
     audio.playMIDI('music/track1.mid');

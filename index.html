@@ -9,15 +9,26 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Three.js for 3D rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Tone.js for sound effects -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
+    <!-- Tone.js for sound effects (jsDelivr) -->
+    <script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.min.js"></script>
     <!-- noise.js for procedural textures -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noisejs/2.0.0/perlin.min.js"></script>
     <!-- CODEX DEBUG: log environment and catch errors -->
     <script>
-      window.onerror = (msg, url, line, col, err) => console.error('Error:', msg, 'at', `${url}:${line}:${col}`, err);
+      window.addEventListener('error', e => {
+        console.error('Error:', e.message, e.filename, e.lineno, e.colno);
+        const errDiv = document.createElement('div');
+        Object.assign(errDiv.style, { position:'absolute', top:'0', left:'0', background:'red', color:'white', padding:'4px', zIndex:'9999' });
+        errDiv.innerText = 'Error: ' + e.message;
+        document.body.appendChild(errDiv);
+      });
       document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOMContentLoaded: globals =', { THREE, assets, initRender, input, audio, gameLogic, ui, drivers, tracks });
+        const dbgDiv = document.createElement('div');
+        Object.assign(dbgDiv.style, { position:'absolute', top:'0', left:'0', background:'yellow', color:'black', padding:'4px', zIndex:'9998' });
+        const globals = ['THREE','assets','initRender','input','audio','gameLogic','ui','drivers','tracks'];
+        const loaded = globals.filter(k => typeof window[k] !== 'undefined');
+        dbgDiv.innerText = 'Loaded globals: ' + loaded.join(', ');
+        document.body.appendChild(dbgDiv);
       });
     </script>
     <!-- MIDI.js for MIDI playback -->
