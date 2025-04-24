@@ -38,6 +38,13 @@ function initSceneObjects() {
     car.position.set(0, 0.25, 0);
     car.name = 'playerCar';
     scene.add(car);
+    // CODEX DEBUG: add red cube to test rendering pipeline
+    const debugCube = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1, 1),
+        new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    );
+    debugCube.position.set(0, 1, -5);
+    scene.add(debugCube);
 }
 function animate(timestamp) {
     requestAnimationFrame(animate);
