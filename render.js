@@ -17,6 +17,10 @@ function initRender() {
     renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas') });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
+    // CODEX DEBUG: clear background and log
+    renderer.setClearColor(0x222222);
+    scene.background = new THREE.Color(0x444444);
+    console.log('initRender done:', { scene, camera });
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth/window.innerHeight;
         camera.updateProjectionMatrix();

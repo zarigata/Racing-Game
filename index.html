@@ -13,6 +13,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
     <!-- noise.js for procedural textures -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noisejs/2.0.0/perlin.min.js"></script>
+    <!-- CODEX DEBUG: log environment and catch errors -->
+    <script>
+      window.onerror = (msg, url, line, col, err) => console.error('Error:', msg, 'at', `${url}:${line}:${col}`, err);
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOMContentLoaded: globals =', { THREE, assets, initRender, input, audio, gameLogic, ui, drivers, tracks });
+      });
+    </script>
     <!-- MIDI.js for MIDI playback -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/midijs/0.3.0/MIDI.min.js"></script>
     <!-- CODEX: favicon to avoid 404 -->
