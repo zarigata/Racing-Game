@@ -20,7 +20,10 @@ function initRender() {
     // CODEX DEBUG: clear background and log
     renderer.setClearColor(0x222222);
     scene.background = new THREE.Color(0x444444);
-    console.log('initRender done:', { scene, camera });
+    // CODEX DEBUG: add grid & axes helpers to verify scene orientation
+    scene.add(new THREE.GridHelper(100, 10, 0x444444, 0x888888));
+    scene.add(new THREE.AxesHelper(5));
+    console.log('initRender done: children count=' + scene.children.length, scene.children.map(o => o.name || o.type));
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth/window.innerHeight;
         camera.updateProjectionMatrix();
